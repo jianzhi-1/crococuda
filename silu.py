@@ -1,7 +1,8 @@
 import torch
 import torch.nn as nn
 from torch.utils.cpp_extension import load
-from typing import override, Any
+from torch.autograd.function import FunctionCtx
+from typing import override
 import os
 
 silu = load(
@@ -14,14 +15,14 @@ silu = load(
 class SiLUFunction(torch.autograd.Function):
     @override
     @staticmethod
-    def forward(ctx: Any, x: torch.Tensor) -> torch.Tensor:
+    def forward(ctx: FunctionCtx, x: torch.Tensor) -> torch.Tensor:
         y = silu.forward(x)
         ctx.save_for_backward(x)
         return y
     
     @override
     @staticmethod
-    def backward(ctx: Any, grad_y: torch.Tensor) -> torch.Tensor:
+    def backward(ctx: FunctionCtx, grad_y: torch.Tensor) -> torch.Tensor:
         (x,) = ctx.saved_tensors
         grad_x = silu.backward(grad_y.contiguous(), x)
         return grad_x
