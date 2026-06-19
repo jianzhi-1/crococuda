@@ -1,5 +1,6 @@
 #include <cuda_runtime.h>
 #include <cassert>
+#include <iostream>
 #include <vector>
 #include "experts_kernel.cuh"
 int main(){
@@ -32,5 +33,7 @@ int main(){
     for (int i = 0; i < expected.size(); i++){
         assert(counts_data[i] == expected[i]);
     }
-    
+    std::cout << "Test passed!" << std::endl;
+    cudaFree(expert_idx);
+    cudaFree(counts);
 }
