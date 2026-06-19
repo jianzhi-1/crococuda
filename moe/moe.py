@@ -13,6 +13,9 @@ class MoELayer(nn.Module):
         self.k = k
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        # Expert function E: [n] -> R^d -> R^d
+        # Weight function G: R^d -> R^n; G(x) = topk(σ(Wx + ε), k)
+        # out = Σi G(x)i * Ei(x)
         batch_size, _ = x.shape
         assert x.shape == (batch_size, self.d_model), [x.shape, (batch_size, self.d_model)]
         Ex = self.E(x).view(-1, self.n_experts, self.d_model)
