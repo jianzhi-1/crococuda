@@ -76,13 +76,33 @@ void gather_launcher(
     int THREADS = 256;
     int BLOCKS = (B*K + THREADS - 1)/THREADS;
     count_kernel<<<BLOCKS, THREADS>>>(expert_idx.data_ptr<int>(), counts, TOTAL);
+    C10_CUDA_KERNEL_LAUNCH_CHECK();
+
     prefix_sum_kernel<<<1,1>>>(counts, expert_offsets.data_ptr<uint32_t>(), N);
-    
+    C10_CUDA_KERNEL_LAUNCH_CHECK();
+
     uint32_t* write_cursor;
     cudaMalloc(&write_cursor, N * sizeof(uint32_t));
     cudaMemcpy(write_cursor, expert_offsets.data_ptr<uint32_t>(), N*sizeof(uint32_t), cudaMemcpyDeviceToDevice); // fill with expert_offsets[:N]
     scatter_kernel<T><<<BLOCKS, THREADS>>>(expert_idx.data_ptr<int>(), x.data_ptr<T>(), gate_weights.data_ptr<T>(), write_cursor, sorted_token_idx.data_ptr<int>(), sorted_x.data_ptr<T>(), sorted_gate.data_ptr<T>(), B, D, K, N);
-
+    C10_CUDA_KERNEL_LAUNCH_CHECK();
+    
     cudaFree(counts);
     cudaFree(write_cursor);
+}
+
+template <typename T>
+void combine_launcher(
+    torch::Tensor expert_out, // [BK, D]
+    torch::Tensor sorted_token_idx, // [BK]
+    torch::Tensor sorted_gate, // [BK], T
+    torch::Tensor out // [B, D]
+){
+    int BK = expert_out.size(0);
+    int D = expert_out.size(1);
+    int THREADS = 256;
+    int BLOCKS = (BK + THREADS - 1) / THREADS;
+    out.zero_();
+    combine_kernel<T><<<BLOCKS, THREADS>>>(expert_out.data_ptr<T>(), sorted_token_idx.data_ptr<int>(), sorted_gate.data_ptr<T>(), out.data_ptr<T>(), BK, D);
+    C10_CUDA_KERNEL_LAUNCH_CHECK();
 }
