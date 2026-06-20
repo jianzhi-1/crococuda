@@ -60,14 +60,17 @@ class MoEKernelised(nn.Module):
         return out
     
 if __name__ == "__main__":
+    assert torch.cuda.is_available()
     torch.manual_seed(42)
     batch_size = 256
     d_model = 10
     n_experts, k = 4, 3
-    x = torch.randn(batch_size, d_model)
-    moe = MoELayer(n_experts=n_experts, k=k, d_model=d_model)
-    moe_kernelized = MoEKernelised(d_model=d_model, N=n_experts, K=k)
-    
-    print(moe(x))
-    print(moe_kernelized(x))
-
+    with torch.device("cuda"):
+        x = torch.randn(batch_size, d_model)
+        moe = MoELayer(n_experts=n_experts, k=k, d_model=d_model)
+        moe_kernelized = MoEKernelised(d_model=d_model, N=n_experts, K=k).eval()
+        out_ref = moe(x)
+        out_kernel = moe_kernelized(x)
+    max_abs_err = (out_kernel - out_ref).abs().max().item()
+    assert torch.all_close(out_kernel, out_ref, atol=1e-5, rtol=1e-4), f"{max_abs_err:.3e}"
+    print("PASS")
