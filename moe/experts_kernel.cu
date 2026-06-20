@@ -41,3 +41,21 @@ void gather(
         gather_launcher<scalar_t>(expert_idx, x, gate_weights, sorted_x, sorted_token_idx, sorted_gate, expert_offsets, N);
     });
 }
+
+// Specialized for PyBind
+void combine(
+    torch::Tensor expert_out,
+    torch::Tensor sorted_token_idx,
+    torch::Tensor sorted_gate,
+    torch::Tensor out
+    
+){
+    AT_DISPATCH_FLOATING_TYPES(expert_out.scalar_type(), "combine_launcher", [&]{
+        combine_launcher<scalar_t>(expert_out, sorted_token_idx, sorted_gate, out);
+    });
+}
+
+PYBIND11_MODULE(TORCH_EXTENSION_NAME, m){
+    m.def("gather", &gather, "MoE gather");
+    m.def("combine", &combine, "MoE combine");
+}
