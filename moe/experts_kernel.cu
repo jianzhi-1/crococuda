@@ -11,6 +11,19 @@ __global__ void count_kernel(
     int* counts, // [N]
     int total // BK
 ){
+    /*
+    Example: B = 5, K = 3, N = 4
+    [
+        [0, 1, 3],
+        [1, 2, 3],
+        [3, 1, 0],
+        [2, 3, 1],
+        [3, 2, 0]
+    ]
+    
+    Expected output:
+    [3, 4, 3, 5]
+    */
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx < total){
         atomicAdd(&counts[expert_idx[idx]], 1);
