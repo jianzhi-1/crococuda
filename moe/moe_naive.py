@@ -4,6 +4,7 @@ import torch.nn.functional as F
 
 class MoELayer(nn.Module):
     def __init__(self, N: int, K: int, D: int, epsilon: float = 1e-5, alpha: float = 1e-2, activation_cls: type[nn.Module] = nn.SiLU):
+        assert K <= N, [K, N]
         super().__init__()
         self.N = N
         self.D = D

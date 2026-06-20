@@ -22,6 +22,7 @@ class Expert(nn.Module):
 
 class MoEKernelised(nn.Module):
     def __init__(self, D: int, N: int, K: int, epsilon: float = 1e-5, activation_cls: type[nn.Module] = nn.SiLU) -> None:
+        assert K <= N, [K, N]
         super().__init__()
         self.D = D
         self.N = N
