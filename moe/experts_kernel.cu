@@ -30,3 +30,21 @@ __global__ void prefix_sum_kernel(
         }
     }
 }
+
+template <typename T>
+__global__ void combine_kernel(
+    const T* expert_out, // [BK, D]
+    const int* sorted_token_idx, // [BK] -> [0, B)
+    const T* sorted_gate, // [BK]
+    T* out, // [B, D]
+    int BK, int D
+){
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx < BK){
+        int token_idx = sorted_token_idx[idx];
+        T weight = sorted_gate[idx];
+        for (int i = 0; i < D; i++){
+            atomicAdd(out + token_idx * D + i, weight * expert_out[idx * D + i]);
+        }
+    }
+}
