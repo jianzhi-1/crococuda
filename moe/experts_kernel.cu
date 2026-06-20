@@ -33,9 +33,13 @@ __global__ void prefix_sum_kernel(
 
 // Specialized for PyBind
 void gather(
+    // INPUT
     torch::Tensor expert_idx, torch::Tensor x, torch::Tensor gate_weights,
+    // OUTPUT
     torch::Tensor sorted_x, torch::Tensor sorted_token_idx, torch::Tensor sorted_gate,
-    torch::Tensor expert_offsets, int N
+    torch::Tensor expert_offsets,
+    // CONST
+    int N
 ){
     AT_DISPATCH_FLOATING_TYPES(x.scalar_type(), "gather_launcher", [&]{
         gather_launcher<scalar_t>(expert_idx, x, gate_weights, sorted_x, sorted_token_idx, sorted_gate, expert_offsets, N);
@@ -44,11 +48,12 @@ void gather(
 
 // Specialized for PyBind
 void combine(
+    // INPUT
     torch::Tensor expert_out,
     torch::Tensor sorted_token_idx,
     torch::Tensor sorted_gate,
+    // OUTPUT
     torch::Tensor out
-    
 ){
     AT_DISPATCH_FLOATING_TYPES(expert_out.scalar_type(), "combine_launcher", [&]{
         combine_launcher<scalar_t>(expert_out, sorted_token_idx, sorted_gate, out);

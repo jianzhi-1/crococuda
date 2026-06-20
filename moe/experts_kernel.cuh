@@ -4,26 +4,36 @@
 #include <torch/extension.h>
 
 __global__ void count_kernel(
+    // INPUT
     const int* expert_idx, // [B, K]
+    // OUTPUT
     int* counts, // [N]
+    // CONST
     int total // BK
 );
 
 __global__ void prefix_sum_kernel(
+    // INPUT
     const int* counts, // [N]
+    // OUTPUT
     uint32_t* expert_offsets, // [N + 1]
+    // CONST
     int N
 );
 
 template <typename T>
 __global__ void scatter_kernel(
+    // INPUT
     const int* expert_idx, // [B, K]
     const T* x, // [B, D]
     const T* gate_weights, // [B, K]
+    // IMM
     uint32_t* write_cursor, // [N]
+    // OUTPUT
     int* sorted_token_idx, // [BK]
     T* sorted_x, // [BK, D]
     T* sorted_gate, // [BK]
+    // CONST
     int B, int D, int K, int N
 ){
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
@@ -41,10 +51,13 @@ __global__ void scatter_kernel(
 
 template <typename T>
 __global__ void combine_kernel(
+    // INPUT
     const T* expert_out, // [BK, D]
     const int* sorted_token_idx, // [BK] -> [0, B)
     const T* sorted_gate, // [BK]
+    // OUTPUT
     T* out, // [B, D]
+    // CONST
     int BK, int D
 ){
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
@@ -59,13 +72,16 @@ __global__ void combine_kernel(
 
 template <typename T>
 void gather_launcher(
+    // INPUT
     torch::Tensor expert_idx, // [B, K], int32
     torch::Tensor x, // [B, D], T
     torch::Tensor gate_weights, // [B, K], T
+    // OUTPUT
     torch::Tensor sorted_x, // [BK, D], T
     torch::Tensor sorted_token_idx, // [BK], int32, [0, B)
     torch::Tensor sorted_gate, // [BK], T
     torch::Tensor expert_offsets, // [N + 1], uint32
+    // CONST
     int N
 ){
     int B = x.size(0), K = expert_idx.size(1), D = x.size(1);
@@ -93,9 +109,11 @@ void gather_launcher(
 
 template <typename T>
 void combine_launcher(
+    // INPUT
     torch::Tensor expert_out, // [BK, D]
     torch::Tensor sorted_token_idx, // [BK]
     torch::Tensor sorted_gate, // [BK], T
+    // OUTPUT
     torch::Tensor out // [B, D]
 ){
     int BK = expert_out.size(0);
