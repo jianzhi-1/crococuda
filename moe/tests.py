@@ -37,26 +37,26 @@ class MoEKernelised(nn.Module):
         assert x.shape == (batch_size, self.d_model), [x.shape, (batch_size, self.d_model)]
         Wgx = self.Wg(x)
         noise = self.epsilon * torch.randn_like(Wgx) if self.training else 0
-        unnormalised_gate_weights, expert_idx = torch.topk(F.softmax(Wgx + noise, dim=-1), self.K)
-        expert_idx = expert_idx.to(torch.int32).contiguous()
-        gate_weights = unnormalised_gate_weights / unnormalised_gate_weights.sum(dim=-1, keepdim=True)
-        sorted_x = torch.zeros((batch_size * self.K, self.d_model), device=device, dtype=dtype)
-        sorted_token_idx = torch.zeros((batch_size * self.K, ), device=device, dtype=torch.int32)
-        sorted_gate = torch.zeros((batch_size * self.K,), device=device, dtype=dtype)
-        expert_offsets = torch.zeros((self.N + 1, ), device=device, dtype=torch.uint32)
+        unnormalised_weights, topk_indices = torch.topk(F.softmax(Wgx + noise, dim=-1), self.K)
+        topk_indices = topk_indices.to(torch.int32).contiguous()
+        weights = unnormalised_weights / unnormalised_weights.sum(dim=-1, keepdim=True)
+        expert_partitions_to_x = torch.zeros((batch_size * self.K, self.d_model), device=device, dtype=dtype)
+        expert_partitions_to_x_idx = torch.zeros((batch_size * self.K, ), device=device, dtype=torch.int32)
+        expert_partitions_to_weight = torch.zeros((batch_size * self.K,), device=device, dtype=dtype)
+        per_expert_offsets = torch.zeros((self.N + 1, ), device=device, dtype=torch.uint32)
         # compute gate
-        moe_kernels.gather(expert_idx, x, gate_weights, sorted_x, sorted_token_idx, sorted_gate, expert_offsets, self.N)
+        moe_kernels.partition_by_expert(topk_indices, x, weights, expert_partitions_to_x, expert_partitions_to_x_idx, expert_partitions_to_weight, per_expert_offsets, self.N)
         # mat mul
-        expert_out = torch.zeros((batch_size * self.K, self.d_model), device=device, dtype=dtype)
+        expert_partitions_to_output = torch.zeros((batch_size * self.K, self.d_model), device=device, dtype=dtype)
 
-        offsets = expert_offsets.cpu()
+        offsets = per_expert_offsets.cpu()
         for i in range(self.N):
             s, t = offsets[i].item(), offsets[i + 1].item()
             if s == t: continue
-            expert_out[s:t, :] = self.experts[i](sorted_x[s:t,:])
+            expert_partitions_to_output[s:t, :] = self.experts[i](expert_partitions_to_x[s:t,:])
         out = torch.zeros((batch_size, self.d_model), device=device, dtype=dtype)
 
-        moe_kernels.combine(expert_out, sorted_token_idx, sorted_gate, out)
+        moe_kernels.reduce_from_expert_partitions(expert_partitions_to_output, expert_partitions_to_x_idx, expert_partitions_to_weight, out)
         return out
     
 if __name__ == "__main__":
