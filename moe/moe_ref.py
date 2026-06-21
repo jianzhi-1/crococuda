@@ -32,7 +32,6 @@ class MoERef(nn.Module):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         B, _ = x.shape
         assert x.shape == (B, self.D), [x.shape, (B, self.D)]
-        x.new_zeros
 
         # Routing
         Wgx = self.Wg(x)
