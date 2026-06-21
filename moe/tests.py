@@ -4,7 +4,7 @@ moe_kernels = load(name="moe_kernels", sources=["./moe/experts_kernel.cu"], verb
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from moe_naive import MoELayer
+from moe_ref import MoERef
 
 class Expert(nn.Module):
     def __init__(self, D: int, activation_cls: type[nn.Module]) -> None:
@@ -68,10 +68,15 @@ if __name__ == "__main__":
     N, K = 4, 3
     with torch.device("cuda"):
         x = torch.randn(B, D)
-        moe = MoELayer(N=N, K=K, D=D)
         moe_kernelized = MoEKernelised(D=D, N=N, K=K).eval()
-        out_ref = moe(x)
         out_kernel = moe_kernelized(x)
+    
+    moe_ref = MoERef(D=D, N=N, K=K, activation_cls=nn.SiLU, sigma=moe_kernelized.epsilon).eval()
+    moe_ref.load_state_dict(moe_kernelized.state_dict())
+    out_ref = moe_ref(x.cpu())
+
+    out_kernel = out_kernel.cpu()
     max_abs_err = (out_kernel - out_ref).abs().max().item()
-    assert torch.all_close(out_kernel, out_ref, atol=1e-5, rtol=1e-4), f"{max_abs_err:.3e}"
+    print(f"max abs err: {max_abs_err:.3e}")
+    assert torch.allclose(out_kernel, out_ref, atol=1e-5, rtol=1e-4), f"{max_abs_err:.3e}"
     print("PASS")
