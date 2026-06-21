@@ -43,11 +43,9 @@ class MoERef(nn.Module):
         # Weighted expert sum
         per_expert_out: list[torch.Tensor] = []
         for b in range(B):
-            cur_out = torch.zeros((1, self.D))
+            cur_out = x.new_zeros((1, self.D))
             for idx, k in enumerate(indices[b]):
                 cur_out += weights[b, idx] * self.experts[k.item()](x[b:(b+1)])
             per_expert_out.append(cur_out)
         out = torch.cat(per_expert_out, dim=0)
         return out
-
-        
