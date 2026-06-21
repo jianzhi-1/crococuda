@@ -1,7 +1,6 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from collections import defaultdict
 
 class Expert(nn.Module):
     def __init__(self, D: int, activation_cls: type[nn.Module]) -> None:
@@ -42,25 +41,18 @@ class MoERef(nn.Module):
         unnormalized_weights, indices = torch.topk(prob, self.K)
         weights = unnormalized_weights / unnormalized_weights.sum(dim=-1, keepdim=True)
 
-        # Weighted expert sum
-        per_expert_input: dict[int, list[tuple[int, torch.Tensor, torch.Tensor]]] = defaultdict(list)
-        for b in range(B):
-            for idx, k in enumerate(indices[b]):
-                per_expert_input[k.item()].append(
-                    (b, x[b:(b+1)], weights[b, idx])
-                )
-        token_indices = [b for n in range(self.N) for b, _, _ in per_expert_input[n]]
-        
-        expert_output_list: list[torch.Tensor] = []
-        weights_list: list[torch.Tensor] = []
+        # Weighted expert sum and accumulation
+        out = x.new_zeros((B, self.D))
+
+        flat_experts = indices.reshape(-1)
+        flat_tokens = torch.arange(B, device=x.device).repeat_interleave(self.K)
+        flat_weights = weights.reshape(-1)
         for n in range(self.N):
-            if len(per_expert_input[n]) == 0: continue
-            per_expert_out = self.experts[n](torch.cat([input for _, input, _ in per_expert_input[n]], dim=0))
-            expert_output_list.append(per_expert_out)
-            weights_list.extend([weight for _, _, weight in per_expert_input[n]])
+            mask = (flat_experts == n)
+            if not mask.any(): continue
+            token_idx = flat_tokens[mask]
+            expert_input = x.index_select(0, token_idx)
+            expert_output = self.experts[n](expert_input)
+            out.index_add_(0, token_idx, flat_weights[mask].unsqueeze(1) * expert_output)
         
-        token_indices_tensor = torch.tensor(token_indices, device=x.device, dtype=torch.long)
-        expert_outputs = torch.cat(expert_output_list, dim=0)
-        expert_weights = torch.stack(weights_list).unsqueeze(1)
-        out = x.new_zeros((B, self.D)).index_add_(0, token_indices_tensor, expert_weights * expert_outputs)
         return out
