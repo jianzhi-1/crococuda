@@ -19,8 +19,8 @@ class MHA(nn.Module):
         K = self.Wk(x).view(B, S, self.H, self.d)
         Q = self.Wq(x).view(B, S, self.H, self.d)
         V = self.Wv(x).view(B, S, self.H, self.d)
-        a = F.softmax(torch.einsum("bshd,bthd->bsht", Q, K) / (self.d ** 0.5), dim=-1)
-        out = torch.einsum("bsht,bthd->bshd", a, V)
+        a = F.softmax(torch.einsum("bshd,bthd->bhst", Q, K) / (self.d ** 0.5), dim=-1)
+        out = torch.einsum("bhst,bthd->bshd", a, V)
         return out.reshape(B, S, self.D)
     
 
