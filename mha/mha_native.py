@@ -16,14 +16,13 @@ class MHANative(nn.Module):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         B, S, _ = x.shape
         assert x.shape == (B, S, self.D), [x.shape, (B, S, self.D)]
-        K = self.Wk(x).view(B, S, self.H, self.d)
-        Q = self.Wq(x).view(B, S, self.H, self.d)
-        V = self.Wv(x).view(B, S, self.H, self.d)
+        K = self.Wk(x).view(B, S, self.H, self.d).transpose(1, 2).contiguous()
+        Q = self.Wq(x).view(B, S, self.H, self.d).transpose(1, 2).contiguous()
+        V = self.Wv(x).view(B, S, self.H, self.d).transpose(1, 2).contiguous()
 
-        qkt = torch.transpose(Q, 1, 2) @ torch.transpose(torch.transpose(K, 1, 2), -1, -2)
+        qkt = Q @ K.transpose(-1, -2)
         qkt = qkt / (self.d ** 0.5)
         att = F.softmax(qkt, dim=-1)
-        out = att @ torch.transpose(V, 1, 2)
+        out = att @ V
         out = torch.transpose(out, 1, 2)
         return out.reshape(B, S, self.D)
-    
