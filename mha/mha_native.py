@@ -23,6 +23,5 @@ class MHANative(nn.Module):
         qkt = Q @ K.transpose(-1, -2)
         qkt = qkt / (self.d ** 0.5)
         att = F.softmax(qkt, dim=-1)
-        out = att @ V
-        out = torch.transpose(out, 1, 2)
+        out = (att @ V).transpose(1, 2)
         return out.reshape(B, S, self.D)
