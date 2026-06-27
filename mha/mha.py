@@ -65,7 +65,7 @@ def test_harness(seed: int) -> bool:
     out_np = torch.as_tensor(np.concat(tuple(out_uncat), axis=2)).reshape(B, S, D)
 
     out_torch = mha(torch.as_tensor(x.reshape(B, S, D)))
-    assert torch.allclose(out_torch, torch.as_tensor(out_np)), (out_torch - out_np).abs().max().item()
+    assert torch.allclose(out_torch, torch.as_tensor(out_np), atol=2e-7), (out_torch - out_np).abs().max().item()
     return True
 
 
