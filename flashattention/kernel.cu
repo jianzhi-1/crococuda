@@ -141,8 +141,8 @@ std::pair<torch::Tensor, torch::Tensor> flash_attention_forward(
     torch::Tensor O = torch::empty_like(Q);
     torch::Tensor L = torch::empty({B, H, S}, Q.options());
 
-    dim3 grid {(S + Br - 1) / Br, H, B};
-    dim3 block {Br};
+    dim3 grid {(unsigned)((S + Br - 1) / Br), (unsigned)H, (unsigned)B};
+    dim3 block {(unsigned)Br};
 
     size_t smem = 2 * (size_t)Bc * d * sizeof(float);
 
@@ -322,8 +322,8 @@ std::tuple<torch::Tensor, torch::Tensor, torch::Tensor> flash_attention_backward
     torch::Tensor dK = torch::empty_like(K);
     torch::Tensor dV = torch::empty_like(V);
 
-    dim3 grid{(S + Bc - 1)/Bc, H, B};
-    dim3 block{Bc};
+    dim3 grid{(unsigned)((S + Bc - 1) / Bc), (unsigned)H, (unsigned)B};
+    dim3 block{(unsigned)Bc};
     size_t smem = (2 * (size_t)Br * d + 2 * (size_t)Br) * sizeof(float);
 
     flash_attention_backward_kernel<<<grid, block, smem>>>(
