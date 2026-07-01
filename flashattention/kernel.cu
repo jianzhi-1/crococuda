@@ -1,4 +1,4 @@
-#include <torch/extension.h>
+#include <torch/torch.h>
 #include <c10/cuda/CUDAException.h>
 #include <ATen/AccumulateType.h>
 #include <cuda.h>
@@ -344,10 +344,4 @@ std::tuple<torch::Tensor, torch::Tensor, torch::Tensor> flash_attention_backward
     C10_CUDA_KERNEL_LAUNCH_CHECK();
     
     return {dQ, dK, dV};
-}
-
-
-PYBIND11_MODULE(TORCH_EXTENSION_NAME, m){
-    m.def("forward", &flash_attention_forward, "flash_attention_forward");
-    m.def("backward", &flash_attention_backward, "flash_attention_backward");
 }

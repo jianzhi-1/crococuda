@@ -4,9 +4,10 @@ from torch.utils.cpp_extension import load
 from torch.autograd.function import FunctionCtx
 import os
 
+_here = os.path.dirname(os.path.abspath(__file__))
 _ext = load(
     name="flash_attention_kernel",
-    sources=[os.path.join(os.path.dirname(os.path.abspath(__file__)), "kernel.cu")],
+    sources=[os.path.join(_here, "kernel.cu"), os.path.join(_here, "bindings.cpp")],
     extra_cuda_cflags=["-O3"],
     verbose=True
 )
