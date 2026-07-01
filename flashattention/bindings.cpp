@@ -1,4 +1,4 @@
-#include <torch/extensions.h>
+#include <torch/extension.h>
 
 std::pair<torch::Tensor, torch::Tensor> flash_attention_forward(
     torch::Tensor Q,
